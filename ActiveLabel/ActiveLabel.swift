@@ -13,7 +13,7 @@ public protocol ActiveLabelDelegate: class {
     func didSelectText(text: String, type: ActiveType)
 }
 
-@IBDesignable public class ActiveLabel: UILabel {
+public class ActiveLabel: UILabel {
     
     // MARK: - public properties
     public weak var delegate: ActiveLabelDelegate?
@@ -48,6 +48,12 @@ public protocol ActiveLabelDelegate: class {
     @IBInspectable public var stringSignSelectedColor: UIColor = .blueColor() {
         didSet { updateTextStorage(parseText: false) }
     }
+    @IBInspectable public var readMoreColor: UIColor = .blueColor() {
+        didSet { updateTextStorage(parseText: false) }
+    }
+    @IBInspectable public var readMoreSelectedColor: UIColor = .blueColor() {
+        didSet { updateTextStorage(parseText: false) }
+    }
     @IBInspectable public var lineSpacing: Float = 0 {
         didSet { updateTextStorage(parseText: false) }
     }
@@ -73,6 +79,10 @@ public protocol ActiveLabelDelegate: class {
         stringTapHandler = handler
     }
     
+    public func handleReadMore(handler: (String) -> ()) {
+        readMoreTapHandler = handler
+    }
+    
     public func filterMention(predicate: (String) -> Bool) {
         mentionFilterPredicate = predicate
         updateTextStorage()
@@ -89,6 +99,10 @@ public protocol ActiveLabelDelegate: class {
     }
     
     public var specialWords: [String]? {
+        didSet { updateTextStorage() }
+    }
+    
+    public var readMore: String? {
         didSet { updateTextStorage() }
     }
     
@@ -189,6 +203,7 @@ public protocol ActiveLabelDelegate: class {
             case .URL(let url): didTapStringURL(url)
             case .DollarSign(let dollarSign) : didTapDollarSign(dollarSign)
             case .StringSign(let stringSign) : didTapStringSign(stringSign)
+            case .ReadMore(let readMore) : didTapReadMore(readMore)
             case .None: ()
             }
             
@@ -216,6 +231,7 @@ public protocol ActiveLabelDelegate: class {
     private var urlTapHandler: ((NSURL) -> ())?
     private var dollarSignTapHandler: ((String) -> ())?
     private var stringTapHandler: ((String) -> ())?
+    private var readMoreTapHandler: ((String) -> ())?
     
     private var mentionFilterPredicate: ((String) -> Bool)?
     private var hashtagFilterPredicate: ((String) -> Bool)?
@@ -230,7 +246,8 @@ public protocol ActiveLabelDelegate: class {
         .Hashtag: [],
         .URL: [],
         .DollarSign: [],
-        .StringSign: []
+        .StringSign: [],
+        .ReadMore: []
     ]
     
     // MARK: - helper functions
@@ -298,6 +315,7 @@ public protocol ActiveLabelDelegate: class {
             case .URL: attributes[NSForegroundColorAttributeName] = URLColor
             case .DollarSign: attributes[NSForegroundColorAttributeName] = dollarSignColor
             case .StringSign: attributes[NSForegroundColorAttributeName] = stringSignColor
+            case .ReadMore: attributes[NSForegroundColorAttributeName] = readMoreColor
             case .None: ()
             }
             
@@ -337,6 +355,13 @@ public protocol ActiveLabelDelegate: class {
             }
         }
         
+        //READ MORE
+        if self.readMore != nil {
+            let readMoreElements = ActiveBuilder.createReadMoreElements(fromText: textString, range: textRange, word: self.readMore!)
+            print("read more elements => \(readMoreElements)")
+            activeElements[.ReadMore]?.appendContentsOf(readMoreElements)
+        }
+        
     }
     
     
@@ -371,6 +396,7 @@ public protocol ActiveLabelDelegate: class {
             case .URL(_): attributes[NSForegroundColorAttributeName] = URLSelectedColor ?? URLColor
             case .DollarSign(_): attributes[NSForegroundColorAttributeName] = dollarSignSelectedColor ?? dollarSignColor
             case .StringSign(_): attributes[NSForegroundColorAttributeName] = stringSignSelectedColor ?? stringSignColor
+            case .ReadMore(_): attributes[NSForegroundColorAttributeName] = readMoreSelectedColor ?? readMoreColor
             case .None: ()
             }
         } else {
@@ -380,6 +406,7 @@ public protocol ActiveLabelDelegate: class {
             case .URL(_): attributes[NSForegroundColorAttributeName] = URLColor
             case .DollarSign(_): attributes[NSForegroundColorAttributeName] = dollarSignColor
             case .StringSign(_): attributes[NSForegroundColorAttributeName] = stringSignColor
+            case .ReadMore(_): attributes[NSForegroundColorAttributeName] = readMoreColor
             case .None: ()
             }
         }
@@ -429,7 +456,7 @@ public protocol ActiveLabelDelegate: class {
     public override func touchesCancelled(touches: Set<UITouch>?, withEvent event: UIEvent?) {
         guard let touch = touches?.first else { return }
         onTouch(touch)
-        super.touchesCancelled(touches, withEvent: event)
+        super.touchesCancelled(touches!, withEvent: event)
     }
     
     public override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
@@ -444,6 +471,7 @@ public protocol ActiveLabelDelegate: class {
             delegate?.didSelectText(username, type: .Mention)
             return
         }
+        
         mentionHandler(username)
     }
     
@@ -477,6 +505,14 @@ public protocol ActiveLabelDelegate: class {
             return
         }
         stringTapHandler(stringSign)
+    }
+    
+    private func didTapReadMore(readMore: String) {
+        guard let readMoreTapHandler = readMoreTapHandler else {
+            delegate?.didSelectText(readMore, type: .ReadMore)
+            return
+        }
+        readMoreTapHandler(readMore)
     }
 }
 
